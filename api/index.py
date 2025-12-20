@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Response
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 from bs4 import BeautifulSoup
@@ -6,7 +6,6 @@ import re
 
 app = FastAPI()
 
-# Browser ko allow karo baat karne ke liye
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,38 +22,62 @@ def check_price(url: str, tag: str):
     }
     
     try:
-        # ASIN Nikalo
-        match = re.search(r'/([A-Z0-9]{10})', url)
-        if not match: return {"error": "Invalid Link"}
-        asin = match.group(1)
-        
-        # Affiliate Link
-        affiliate_link = f"https://www.amazon.in/dp/{asin}?tag={tag}"
-
-        # Request bhejo
-        session = requests.Session()
-        response = session.get(url, headers=headers, timeout=5)
+        # 1. REQUEST BHEJO (Allow Redirects = True)
+        # Ye short link (amzn.to) ko open karke full link bana dega
+        response = requests.get(url, headers=headers, timeout=10, allow_redirects=True)
         
         if response.status_code != 200: 
-            return {"error": "Amazon Blocked"}
+            return {"error": "Link Blocked"}
 
+        # Ye hai asli lamba URL
+        final_url = response.url
+
+        # 2. AB ASIN NIKALO (Final URL se)
+        # Hum multiple patterns check karenge taaki galti na ho
+        match = re.search(r'/dp/([A-Z0-9]{10})', final_url)
+        if not match:
+            match = re.search(r'/gp/product/([A-Z0-9]{10})', final_url)
+        if not match:
+            match = re.search(r'/([A-Z0-9]{10})', final_url) # Fallback
+
+        if not match:
+            return {"error": "Product ID Not Found"}
+            
+        asin = match.group(1)
+        
+        # Affiliate Link Banao
+        affiliate_link = f"https://www.amazon.in/dp/{asin}?tag={tag}"
+
+        # 3. DATA NIKALO HTML SE
         soup = BeautifulSoup(response.content, "lxml")
 
-        # 1. Title
+        # Title
         title = soup.find("span", attrs={"id": "productTitle"})
-        title = title.get_text().strip()[:50] + "..." if title else "Amazon Product"
+        title = title.get_text().strip()[:60] + "..." if title else "Amazon Deal"
 
-        # 2. Price
+        # Price
         price = "See Price"
         price_tag = soup.find("span", attrs={"class": "a-price-whole"})
+        if not price_tag:
+            price_tag = soup.find("span", attrs={"class": "a-offscreen"})
+            
         if price_tag:
-            price = "₹" + price_tag.get_text().strip().replace('.', '')
+            price_text = price_tag.get_text().strip().replace('.', '')
+            # Agar symbol nahi hai to lagao
+            if "₹" not in price_text:
+                price = "₹" + price_text
+            else:
+                price = price_text
 
-        # 3. Image
+        # Image
         image = "https://placehold.co/200?text=No+Image"
         img_div = soup.find("div", attrs={"id": "imgTagWrapperId"})
         if img_div and img_div.find("img"):
             image = img_div.find("img")["src"]
+        else:
+            landing_img = soup.find("img", attrs={"id": "landingImage"})
+            if landing_img:
+                image = landing_img["src"]
 
         return {
             "title": title,
