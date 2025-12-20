@@ -106,14 +106,14 @@
         .container { 
             display: grid; 
             grid-template-columns: repeat(2, 1fr); 
-            gap: 38px 12px;
+            gap: 25px 12px;
             padding: 12px;
         }
 
         @media (min-width: 768px) {
             .container {
                 grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-                gap: 40px 20px;
+                gap: 30px 20px;
                 padding: 20px;
             }
         }
@@ -121,14 +121,15 @@
         /* --- CARD --- */
         .card { 
             background: var(--white); 
-            border-radius: 8px; 
+            border-radius: 10px; 
             padding: 12px; 
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             position: relative;
             height: 100%;
-            border: 0px solid #e0e0e0;
+            border: 1px solid #e0e0e0;
+            overflow: hidden;
             animation: fadeIn 0.5s ease-in;
         }
 
@@ -205,28 +206,31 @@
         }
         .btn:hover { background: #F7CA00; }
 
-        /* --- LOAD MORE BUTTON --- */
-        .load-more-container {
-            text-align: center;
-            margin: 20px 0;
-            display: none; /* Initially hidden */
+        /* --- PAGINATION BUTTONS (New Style) --- */
+        .pagination-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin: 30px 0 10px 0;
         }
-        
-        .load-more-btn {
-            background: #37475a; /* Amazon Dark Gray */
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            font-size: 15px;
-            font-weight: bold;
-            border-radius: 4px;
+
+        .page-btn {
+            background: white;
+            border: 1px solid #d5d9d9;
+            padding: 8px 16px;
+            border-radius: 7px;
+            box-shadow: 0 2px 5px rgba(213,217,217,0.5);
             cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            transition: background 0.2s;
+            font-size: 14px;
+            text-decoration: none;
+            color: #111;
         }
+
+        .page-btn:hover { background: #f7fafa; }
+        .page-btn.disabled { opacity: 0.5; pointer-events: none; background: #eee; }
         
-        .load-more-btn:hover { background: #485769; }
-        .load-more-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .page-info { font-size: 14px; color: #555; }
 
         /* --- FOOTER --- */
         footer {
@@ -284,9 +288,11 @@
             <!-- Cards will appear here -->
         </div>
         
-        <!-- Load More Button -->
-        <div class="load-more-container" id="loadMoreContainer">
-            <button class="load-more-btn" onclick="loadNextBatch()" id="loadMoreBtn">See More Deals</button>
+        <!-- Pagination Controls -->
+        <div class="pagination-container" id="paginationControls">
+            <button class="page-btn" id="prevBtn" onclick="changePage(-1)">Previous</button>
+            <span class="page-info" id="pageIndicator">Page 1</span>
+            <button class="page-btn" id="nextBtn" onclick="changePage(1)">Next</button>
         </div>
 
         <div id="noResults" class="no-results">
@@ -299,12 +305,9 @@
         <div class="back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">Back to top</div>
 
         <div class="social-icons">
-            <!-- Telegram -->
             <a href="https://telegram.me/InstaHipe" target="_blank"><svg class="social-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg></a>
-            <!-- WhatsApp -->
             <a href="https://whatsapp.com/channel/0029Vag7IMeEwEk1bBcV8u0X" target="_blank"><svg class="social-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.637 3.891 1.685 5.616l-1.114 4.068 3.918-1.383z"/></svg></a>
-            <!-- Instagram -->
-            <a href="https://www.instagram.com/grabcoolgadgets/" target="_blank"><svg class="social-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg></a>
+            <a href="https://www.instagram.com/grabcoolgadgets" target="_blank"><svg class="social-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg></a>
         </div>
 
         <div class="footer-links">
@@ -321,15 +324,19 @@
         const container = document.getElementById('product-list');
         const searchInput = document.getElementById('searchInput');
         const noResults = document.getElementById('noResults');
-        const loadMoreBtn = document.getElementById('loadMoreBtn');
-        const loadMoreContainer = document.getElementById('loadMoreContainer');
+        const paginationControls = document.getElementById('paginationControls');
+        const pageIndicator = document.getElementById('pageIndicator');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
         
         // CONFIG
-        const BATCH_SIZE = 8; // Load 8 products at a time
-        const CACHE_DURATION = 60 * 60 * 1000; // 1 Hour
+        const BATCH_SIZE = 8;
+        const CACHE_DURATION = 60 * 60 * 1000;
         
+        // URL se Page Number nikalo, agar nahi hai to 1
+        const urlParams = new URLSearchParams(window.location.search);
+        let currentPage = parseInt(urlParams.get('page')) || 1;
         let loadedCards = [];
-        let currentBatchIndex = 0;
 
         // --- SEARCH LOGIC ---
         function toggleSearch() {
@@ -341,6 +348,9 @@
         searchInput.addEventListener('input', (e) => {
             const query = e.target.value.toLowerCase();
             let visibleCount = 0;
+            // Search sirf current page pe loaded items me hi chalega
+            // (Note: Search pure database me karne ke liye alag logic chahiye hota hai, 
+            // but static site me current loaded items me hi best rehta hai)
             loadedCards.forEach(cardObj => {
                 const text = cardObj.title.toLowerCase();
                 if (text.includes(query)) {
@@ -351,24 +361,57 @@
                 }
             });
             noResults.style.display = (visibleCount === 0 && loadedCards.length > 0) ? 'block' : 'none';
-            // Hide Load More button while searching
-            loadMoreContainer.style.display = (query.length > 0) ? 'none' : (currentBatchIndex < products.length ? 'block' : 'none');
+            // Hide Pagination when searching
+            paginationControls.style.display = (query.length > 0) ? 'none' : 'flex';
         });
 
-        // --- LOAD MORE LOGIC ---
-        async function loadNextBatch() {
+        // --- PAGE CHANGE LOGIC ---
+        function changePage(direction) {
+            const newPage = currentPage + direction;
+            if (newPage < 1) return;
+            
+            // Check if next page exists
+            const maxPages = Math.ceil(products.length / BATCH_SIZE);
+            if (newPage > maxPages) return;
+
+            // URL Update karo (Reload nahi hoga)
+            const newUrl = new URL(window.location);
+            newUrl.searchParams.set('page', newPage);
+            window.history.pushState({}, '', newUrl);
+
+            currentPage = newPage;
+            loadPage(currentPage);
+            
+            // Scroll to Top
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        // --- LOAD PAGE DATA ---
+        async function loadPage(page) {
             if (typeof products === 'undefined') return;
 
-            // 1. Show Loading State on Button
-            loadMoreBtn.innerText = "Loading Deals...";
-            loadMoreBtn.disabled = true;
+            // Clear Container (Purane 8 hatao)
+            container.innerHTML = "";
+            loadedCards = [];
 
-            const nextIndex = currentBatchIndex + BATCH_SIZE;
-            const batchLinks = products.slice(currentBatchIndex, nextIndex);
+            // Calculate Indices
+            const start = (page - 1) * BATCH_SIZE;
+            const end = start + BATCH_SIZE;
+            const batchLinks = products.slice(start, end);
             
-            if (batchLinks.length === 0) return;
+            // Update Buttons
+            pageIndicator.innerText = `Page ${page}`;
+            prevBtn.classList.toggle('disabled', page === 1);
+            
+            const maxPages = Math.ceil(products.length / BATCH_SIZE);
+            nextBtn.classList.toggle('disabled', page >= maxPages);
 
-            // 2. Add Skeletons for this batch
+            if (batchLinks.length === 0) {
+                container.innerHTML = "<h3 style='text-align:center;width:100%;'>No products found here.</h3>";
+                return;
+            }
+
+            // Skeletons
             const skeletonElements = [];
             batchLinks.forEach(() => {
                 const skel = document.createElement('div');
@@ -377,21 +420,20 @@
                 skeletonElements.push(skel);
             });
 
-            // 3. Process Batch (Check Cache or Fetch)
+            // Fetch Logic
             const requests = batchLinks.map(async (link) => {
                 try {
-                    const cacheKey = "deal_" + link;
+                    const cacheKey = "deal_v4_" + link;
                     const cached = localStorage.getItem(cacheKey);
                     
                     if (cached) {
                         const data = JSON.parse(cached);
                         const now = new Date().getTime();
                         if (now - data.timestamp < CACHE_DURATION) {
-                            return data.info; // Use Cache
+                            return data.info; 
                         }
                     }
 
-                    // Fetch Live
                     const res = await fetch(`${API_URL}?url=${encodeURIComponent(link)}&tag=${AFFILIATE_TAG}`);
                     const jsonData = await res.json();
 
@@ -407,7 +449,7 @@
 
             const data = await Promise.all(requests);
 
-            // 4. Remove Skeletons & Append Cards
+            // Remove Skeletons & Add Cards
             skeletonElements.forEach(el => el.remove());
 
             data.forEach(item => {
@@ -417,18 +459,6 @@
                     loadedCards.push({ title: item.title, element: card });
                 }
             });
-
-            // 5. Update State
-            currentBatchIndex = nextIndex;
-            loadMoreBtn.innerText = "See More Deals";
-            loadMoreBtn.disabled = false;
-
-            // Hide Button if all products loaded
-            if (currentBatchIndex >= products.length) {
-                loadMoreContainer.style.display = 'none';
-            } else {
-                loadMoreContainer.style.display = 'block';
-            }
         }
 
         function createCard(item) {
@@ -455,8 +485,8 @@
             return card;
         }
 
-        // Initialize First Batch
-        window.onload = loadNextBatch;
+        // Start
+        window.onload = () => loadPage(currentPage);
 
     </script>
 </body>
