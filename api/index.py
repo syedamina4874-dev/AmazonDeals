@@ -4,7 +4,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import random
-import time
+import urllib.parse
 
 app = FastAPI()
 
@@ -16,15 +16,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- USER AGENT LIST (To trick Amazon) ---
-user_agents = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1"
-]
-
 def clean_price(price_str):
     if not price_str: return 0
     clean = re.sub(r'[^\d.]', '', str(price_str))
@@ -33,117 +24,77 @@ def clean_price(price_str):
 
 @app.get("/api/check")
 def check_price(url: str, tag: str):
-    session = requests.Session()
-    final_data = {"error": "Failed"}
-
-    # --- RETRY LOOP (Try 3 times) ---
-    for i in range(3):
+    try:
+        # 1. Resolve Short Link (amzn.to)
+        # Iske liye hum direct request bhej sakte hain kyunki ye block nahi hota
+        session = requests.Session()
         try:
-            headers = {
-                "User-Agent": random.choice(user_agents),
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-                "Accept-Language": "en-US,en;q=0.5",
-                "Referer": "https://www.google.com/",
-                "Upgrade-Insecure-Requests": "1",
-            }
-            
-            response = session.get(url, headers=headers, timeout=8, allow_redirects=True)
-            
-            # Check if blocked (Captcha)
-            if "api-services-support@amazon.com" in response.text or "Robot Check" in response.text:
-                time.sleep(1) # Wait 1 sec and retry
-                continue 
+            resp = session.head(url, allow_redirects=True, timeout=5)
+            final_url = resp.url
+        except:
+            final_url = url
 
-            if response.status_code != 200: continue
+        # Extract ASIN
+        match = re.search(r'/(dp|gp/product)/([A-Z0-9]{10})', final_url)
+        asin = match.group(2) if match else "UNKNOWN"
+        
+        affiliate_link = f"https://www.amazon.in/dp/{asin}?tag={tag}" if asin != "UNKNOWN" else final_url
 
-            final_url = response.url
-            match = re.search(r'/(dp|gp/product)/([A-Z0-9]{10})', final_url)
-            asin = match.group(2) if match else "UNKNOWN"
-            affiliate_link = f"https://www.amazon.in/dp/{asin}?tag={tag}" if asin != "UNKNOWN" else final_url
+        # 2. USE PROXY TO FETCH DATA (Bypass Blocking)
+        # Hum 'api.allorigins.win' use karenge jo Amazon ka HTML laake dega
+        proxy_url = f"https://api.allorigins.win/get?url={urllib.parse.quote(final_url)}"
+        
+        response = requests.get(proxy_url, timeout=10)
+        json_data = response.json()
+        html_content = json_data.get("contents", "")
 
-            soup = BeautifulSoup(response.content, "lxml")
+        if not html_content:
+            return {"error": "Proxy Failed"}
 
-            # --- DATA EXTRACTION ---
-            
-            # 1. Title
-            title = None
-            if not title: title = soup.find("meta", attrs={"name": "title"})
-            if title: title = title.get('content')
-            
-            if not title: title = soup.find("span", attrs={"id": "productTitle"})
-            if title and not isinstance(title, str): title = title.get_text().strip()
-            
-            if not title: title = soup.find("meta", property="og:title")
-            if title: title = title.get('content')
+        soup = BeautifulSoup(html_content, "lxml")
 
-            if not title:
-                # Agar title nahi mila, to retry karo
-                continue
-            
-            title = title.replace("Amazon.in:", "").replace("Buy ", "").strip()[:70] + "..."
+        # --- DATA EXTRACTION ---
+        
+        # Title
+        title = None
+        if not title: title = soup.find("meta", attrs={"name": "title"})
+        if title: title = title.get('content')
+        if not title:
+            t = soup.find("title")
+            if t: title = t.get_text()
+        
+        if not title: title = "Amazon Product"
+        title = title.replace("Amazon.in:", "").replace("Buy", "").strip()[:70] + "..."
 
-            # 2. Image
-            image = None
-            if not image: image = soup.find("meta", property="og:image")
-            if image: image = image.get('content')
-            
-            if not image:
-                img_div = soup.find("div", attrs={"id": "imgTagWrapperId"})
-                if img_div and img_div.find("img"): image = img_div.find("img")["src"]
+        # Image
+        image = None
+        img_meta = soup.find("meta", property="og:image")
+        if img_meta: image = img_meta.get('content')
+        
+        if not image: image = "https://placehold.co/200?text=Check+Link"
 
-            # Fallback Image (Generic Amazon Logo instead of Gray Box)
-            if not image: image = "https://upload.wikimedia.org/wikipedia/commons/4/4a/Amazon_icon.svg"
+        # Price (MetaData se nikalna safe hai)
+        selling_price_str = "Check Price"
+        
+        # Amazon kabhi kabhi price description meta me daalta hai
+        desc = soup.find("meta", attrs={"name": "description"})
+        if desc:
+            desc_text = desc.get("content", "")
+            price_match = re.search(r'₹\s?([\d,]+)', desc_text)
+            if price_match:
+                selling_price_str = "₹" + price_match.group(1)
 
-            # 3. Price
-            price_tag = soup.find("span", attrs={"class": "a-price-whole"})
-            selling_price_str = "Check Price"
-            selling_price_val = 0
-            
-            if price_tag:
-                raw_price = price_tag.get_text().strip().replace('.', '')
-                selling_price_str = "₹" + raw_price
-                selling_price_val = clean_price(selling_price_str)
+        # Offers logic filhal simple rakhenge kyunki proxy HTML thoda alag ho sakta hai
+        return {
+            "title": title,
+            "price": selling_price_str,
+            "mrp": "",
+            "discount": "",
+            "coupon": "",
+            "bank_offer": False,
+            "image": image,
+            "link": affiliate_link
+        }
 
-            # 4. Offers
-            mrp_str = ""
-            discount_str = ""
-            mrp_tag = soup.find("span", attrs={"class": "a-text-price"})
-            if mrp_tag:
-                mrp_inner = mrp_tag.find("span", attrs={"class": "a-offscreen"})
-                if mrp_inner:
-                    mrp_str = mrp_inner.get_text().strip()
-                    mrp_val = clean_price(mrp_str)
-                    if mrp_val > selling_price_val and mrp_val > 0:
-                        off = int(((mrp_val - selling_price_val) / mrp_val) * 100)
-                        if off > 0: discount_str = f"-{off}%"
-
-            coupon_text = ""
-            page_text = soup.get_text()
-            if "Apply" in page_text and "coupon" in page_text: coupon_text = "Coupon Available"
-
-            bank_offer = False
-            if "Bank Offer" in page_text or "Partner Offers" in page_text: bank_offer = True
-
-            # SUCCESS! Return Data
-            return {
-                "title": title,
-                "price": selling_price_str,
-                "mrp": mrp_str,
-                "discount": discount_str,
-                "coupon": coupon_text,
-                "bank_offer": bank_offer,
-                "image": image,
-                "link": affiliate_link
-            }
-
-        except Exception:
-            continue
-    
-    # If all 3 tries fail, return a Fallback Card
-    return {
-        "title": "Exclusive Deal (Click to View)",
-        "price": "Check Price",
-        "image": "https://upload.wikimedia.org/wikipedia/commons/4/4a/Amazon_icon.svg", # Clean Logo
-        "link": url, # Original Link
-        "mrp": "", "discount": "", "coupon": "", "bank_offer": False
-    }
+    except Exception as e:
+        return {"error": str(e)}
