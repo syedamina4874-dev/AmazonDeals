@@ -3,8 +3,6 @@ const AFFILIATE_TAG = "girlyworld34-20";
 const products = [
     "https://amzn.to/3LiJQTd",
     "https://amzn.to/4bqemVC",
-    "https://amzn.to/4qeVrlp",
-    "https://amzn.to/4pvWkoi",
     "https://amzn.to/4aTeIUD",
     "https://amzn.to/4pAduBr",
     "https://amzn.to/49wzozC",
