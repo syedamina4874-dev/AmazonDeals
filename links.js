@@ -6,4 +6,5 @@ const products = [
     "https://amzn.to/3Z58j1k",
     "https://amzn.to/4qgEBCy",
     "https://amzn.to/3LFwFM4",
+    "https://amzn.to/3NtwVP3",
 ];
